@@ -38,16 +38,17 @@ class RandomlyMaskedDataset(BaseDataset):
             y = np.random.randint(0, max(im.height - h, 0) + 1)
             bg_mask[y:y+h, x:x+w, :] = 0
         A = im
-        masked = np.uint8(im * bg_mask)
-        B = Image.fromarray(masked)
+        B = Image.fromarray(np.uint8(im * bg_mask))
 
         A = transforms.ToTensor()(A)
         B = transforms.ToTensor()(B)
+        bg_mask = transforms.ToTensor()(bg_mask[:, :, 0])
         w_offset = random.randint(0, max(0, self.opt.loadSize - self.opt.fineSize - 1))
         h_offset = random.randint(0, max(0, self.opt.loadSize - self.opt.fineSize - 1))
 
         A = A[:, h_offset:h_offset + self.opt.fineSize, w_offset:w_offset + self.opt.fineSize]
         B = B[:, h_offset:h_offset + self.opt.fineSize, w_offset:w_offset + self.opt.fineSize]
+        bg_mask = bg_mask[h_offset:h_offset + self.opt.fineSize, w_offset:w_offset + self.opt.fineSize]
 
         A = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))(A)
         B = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))(B)
@@ -64,6 +65,7 @@ class RandomlyMaskedDataset(BaseDataset):
             idx = torch.LongTensor(idx)
             A = A.index_select(2, idx)
             B = B.index_select(2, idx)
+            bg_mask = bg_mask.index_select(1, idx)
 
         if input_nc == 1:  # RGB to gray
             tmp = A[0, ...] * 0.299 + A[1, ...] * 0.587 + A[2, ...] * 0.114
