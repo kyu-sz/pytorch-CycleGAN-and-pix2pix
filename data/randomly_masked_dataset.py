@@ -18,20 +18,28 @@ class RandomlyMaskedDataset(BaseDataset):
 
     def __getitem__(self, index):
         path = self.paths[index]
-        img = Image.open(path).convert('RGB')
-        img = img.resize((self.opt.loadSize, self.opt.loadSize), Image.BICUBIC)
+        im = Image.open(path).convert('RGB')
+
+        # Resize and randomly crop the image to opt.loadSize x opt.loadSize.
+        w, h = im.size
+        resize_ratio = self.opt.loadSize / float(min(w, h))
+        im = im.resize((int(w * resize_ratio), int(h * resize_ratio)), Image.BICUBIC)
+        x_start = np.random.randint(0, im.width - self.opt.loadSize + 1)
+        y_start = min(abs(np.random.normal(0, im.height - self.opt.loadSize)), im.height - self.opt.loadSize)
+        im = im.crop((x_start, y_start, x_start + self.opt.loadSize, y_start + self.opt.loadSize))
 
         # Generate random background mask.
-        bg_mask = np.ones((img.height, img.width))
-        num_obj = np.random.randint(1, 10)
+        bg_mask = np.ones((im.height, im.width, 3))
+        num_obj = np.random.randint(4, 9)
         for _ in range(num_obj):
-            w = np.random.randint(10, img.width / 4)
-            h = np.random.randint(10, img.height / 4)
-            x = np.random.randint(0, img.width - w)
-            y = np.random.randint(0, img.height - h)
-            bg_mask[y:y+h, x:x+w] = 0
-        A = img
-        B = Image.fromarray(np.uint8(img * np.repeat(bg_mask.reshape(bg_mask.shape[0], bg_mask.shape[1], 1), 3, 2)))
+            w = np.random.randint(10, max(10, im.width / 4) + 1)
+            h = np.random.randint(10, max(10, im.height / 4) + 1)
+            x = np.random.randint(0, max(im.width - w, 0) + 1)
+            y = np.random.randint(0, max(im.height - h, 0) + 1)
+            bg_mask[y:y+h, x:x+w, :] = 0
+        A = im
+        masked = np.uint8(im * bg_mask)
+        B = Image.fromarray(masked)
 
         A = transforms.ToTensor()(A)
         B = transforms.ToTensor()(B)
