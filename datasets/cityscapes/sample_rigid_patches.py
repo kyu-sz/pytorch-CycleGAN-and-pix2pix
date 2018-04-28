@@ -6,7 +6,6 @@ import os
 
 import cv2
 import numpy as np
-from multiprocessing import Pool
 
 from datasets.cityscapes.read_cityscapes_json import json2instances
 
