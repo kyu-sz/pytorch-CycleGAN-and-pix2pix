@@ -24,11 +24,14 @@ def get_transform(opt):
         transform_list.append(transforms.RandomCrop(opt.fineSize))
     elif opt.resize_or_crop == 'scale_width':
         transform_list.append(transforms.Lambda(
-            lambda img: __scale_width(img, opt.fineSize)))
+                lambda img: __scale_width(img, opt.fineSize)))
     elif opt.resize_or_crop == 'scale_width_and_crop':
         transform_list.append(transforms.Lambda(
-            lambda img: __scale_width(img, opt.loadSize)))
+                lambda img: __scale_width(img, opt.loadSize)))
         transform_list.append(transforms.RandomCrop(opt.fineSize))
+    else:
+        transform_list.append(transforms.Lambda(
+                lambda img: __scale_to_at_least(img, opt.loadSize)))
 
     if opt.isTrain and not opt.no_flip:
         transform_list.append(transforms.RandomHorizontalFlip())
@@ -46,3 +49,11 @@ def __scale_width(img, target_width):
     w = target_width
     h = int(target_width * oh / ow)
     return img.resize((w, h), Image.BICUBIC)
+
+
+def __scale_to_at_least(img, size):
+    ow, oh = img.size
+    if ow >= size and oh >= size:
+        return img
+    ratio = size / min(ow, oh)
+    return img.resize((int(ow * ratio), int(oh * ratio)), Image.BICUBIC)
