@@ -327,11 +327,16 @@ class UnetSkipConnectionBlock(nn.Module):
         self.model = nn.Sequential(*model)
 
     def forward(self, x):
+        y = self.model(x)
+        if y.shape[2] < x.shape[2]:
+            y = torch.cat([y, y[:,:,-1,:].resize(y.shape[0],y.shape[1],1,y.shape[3])], 2)
+        if y.shape[3] < x.shape[3]:
+            y = torch.cat([y, y[:,:,:,-1].resize(y.shape[0],y.shape[1],y.shape[2],1)], 3)
+        y = y[:x.shape[0], :x.shape[1], :x.shape[2], :x.shape[3]]
         if self.outermost:
-            return self.model(x)
+            return y
         else:
-            y = self.model(x)
-            return torch.cat([x, y[:x.shape[0], :x.shape[1], :x.shape[2], :x.shape[3]]], 1)
+            return torch.cat([x, y], 1)
 
 
 # Defines the PatchGAN discriminator with the specified arguments.
